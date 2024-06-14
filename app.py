@@ -2,6 +2,11 @@ import os
 import yaml
 from flask import Flask, request, render_template, jsonify, make_response
 from werkzeug.utils import secure_filename
+import requests
+import base64
+from PIL import Image
+from io import BytesIO
+
 
 app = Flask(__name__)
 
@@ -19,6 +24,29 @@ config = load_config()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config['upload']['allowed_extensions']
+
+def read_image(file_name):
+    image = Image.open(file_name)
+    buffered = BytesIO()
+
+    image.save(buffered, quality=100, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue())
+    img_str = img_str.decode("ascii")
+
+    return img_str
+
+def classify_image(image):
+    project_id = config['beer-classification-api']['project_id']
+    model_version = config['beer-classification-api']['model_version']
+    api_key = config['beer-classification-api']['api_key']
+
+    res = requests.post(
+        f"https://detect.roboflow.com/{project_id}/{model_version}?api_key={api_key}",
+        data=image,
+        headers={"Content-Type": "application/json"},
+    )
+
+    return res.json()
 
 @app.route('/get-beer-classification', methods=['GET', 'POST'])
 def get_beer_classification():
@@ -41,10 +69,10 @@ def get_beer_classification():
             filepath = os.path.join(config['upload']['folder'], filename)
             file.save(filepath)
 
-            if config['upload']['delete_files_after']:
-                os.remove(filepath)
+            image = read_image(filepath)
+            classication_result = classify_image(image)
 
-            return make_response(jsonify({'message': 'File uploaded successfully'}), 200)  # HTTP 200 OK
+            return make_response(jsonify(classication_result), 200)  # HTTP 200 OK
     # GET request response
     return render_template('upload.html')
 
