@@ -7,7 +7,6 @@ import base64
 from PIL import Image
 from io import BytesIO
 
-
 app = Flask(__name__)
 
 def load_config():
@@ -71,6 +70,9 @@ def get_beer_classification():
 
             image = read_image(filepath)
             classication_result = classify_image(image)
+
+            if config['upload']['delete_files_after']:
+                os.remove(filepath)
 
             return make_response(jsonify(classication_result), 200)  # HTTP 200 OK
     # GET request response
