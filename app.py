@@ -49,34 +49,37 @@ def classify_image(image):
 
 @app.route('/get-beer-classification', methods=['GET', 'POST'])
 def get_beer_classification():
-    if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            return make_response(jsonify({'error': 'No file in POST request'}), 400)  # HTTP 400 Bad Request
-        
-        file = request.files['file']
-        # If the user does not select a file, the browser submits an
-        # empty file without a filename.
-        if file.filename == '':
-            return make_response(jsonify({'error': 'No file selected'}), 400)  # HTTP 400 Bad Request
+    try:
+        if request.method == 'POST':
+            # check if the post request has the file part
+            if 'file' not in request.files:
+                return make_response(jsonify({'error': 'No file in POST request'}), 400)  # HTTP 400 Bad Request
+            
+            file = request.files['file']
+            # If the user does not select a file, the browser submits an
+            # empty file without a filename.
+            if file.filename == '':
+                return make_response(jsonify({'error': 'No file selected'}), 400)  # HTTP 400 Bad Request
 
-        if not allowed_file(file.filename):
-            return make_response(jsonify({'error': 'Uploaded file with not allowed extension'}), 400)  # HTTP 400 Bad Request
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(config['upload']['folder'], filename)
-            file.save(filepath)
+            if not allowed_file(file.filename):
+                return make_response(jsonify({'error': 'Uploaded file with not allowed extension'}), 400)  # HTTP 400 Bad Request
+            
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(config['upload']['folder'], filename)
+                file.save(filepath)
 
-            image = read_image(filepath)
-            classication_result = classify_image(image)
+                image = read_image(filepath)
+                classication_result = classify_image(image)
 
-            if config['upload']['delete_files_after']:
-                os.remove(filepath)
+                if config['upload']['delete_files_after']:
+                    os.remove(filepath)
 
-            return make_response(jsonify(classication_result), 200)  # HTTP 200 OK
-    # GET request response
-    return render_template('upload.html')
+                return make_response(jsonify(classication_result), 200)  # HTTP 200 OK
+        # GET request response
+        return render_template('upload.html')
+    except Exception as e:
+        return make_response(jsonify({'error': 'Server error occured, try later'}), 500)  # HTTP 500 Internal Server Error
 
 if __name__ == '__main__':
     app.run(debug=True)
